@@ -1,16 +1,19 @@
         function notificacao() {
             if (Notification.permission === "granted" && pontoHoje.horaSaida().subtract(10, 'minutes').isAfter(moment())) {
-                var notification = createNotification("minina", "18:13:05");
-                setTimeout(notification.close.bind(notification), 5000);
+                var notification = createNotification("minina", pontoHoje.horaSaida().subtract(10, 'minutes').format("HH:mm"));
+                setTimeout(notification.close.bind(notification), 6000);
+                console.log("rodando 1");
             } else if (Notification.permission !== 'denied') {
                 Notification.requestPermission(function (permission) {
                     if (permission === "granted" && pontoHoje.horaSaida().subtract(10, 'minutes').isAfter(moment()))  {
-                        var notification = createNotification("minina", "18:13:05");
-                        setTimeout(notification.close.bind(notification), 5000);
+                        var notification = createNotification("minina", pontoHoje.horaSaida().subtract(10, 'minutes').format("HH:mm"));
+                        setTimeout(notification.close.bind(notification), 6000);
                     }
                 });
+                console.log("rodando 2");
             } else 
                 setTimeout(notificacao, 60000);
+                console.log("rodando 3");
         }
 
         function createNotification(label, horario) {
