@@ -20,3 +20,75 @@ pipeline {
         }
     }
 }
+
+----------------------------------------------------
+# build pipeline
+node {
+  stage ('Checkout') {
+
+  // Checkout code from repository and update any submodules
+    checkout([
+        $class: 'GitSCM',
+        branches: [[name: "*/${BRANCH}"]],
+        userRemoteConfigs: [[url: 'https://REPO', credentialsId: "${env.GIT_CREDENTIALS}"]],
+        extensions: [[$class: 'LocalBranch', localBranch: "${BRANCH}"]]]
+    )
+  }
+  stage('Compile') {
+       withMaven(
+        maven: 'Maven',
+        // config files plugin
+        mavenSettingsConfig: 'GLOBAL_SETTINGS',
+        mavenLocalRepo: '.repository') {
+            sh "mvn clean install"
+        }
+  }
+  stage('Reporting sonar') {
+      echo "teste"
+      //echo "mvn sonar:sonar -Dsonar.host.url=http://hb-vw8ap43:9000"
+  }
+}
+
+----------------------------------------------------
+# build pipeline parallel
+
+node {
+  stage ('Checkout') {
+    checkout([
+        $class: 'GitSCM',
+        branches: [[name: "*/master"]],
+        userRemoteConfigs: [[url: 'https://REPO', credentialsId: "${env.GIT_CREDENTIAL}"]],
+        extensions: [[$class: 'LocalBranch', localBranch: "master"]]]
+    )
+  }
+  stage('Compile') {
+       withMaven(
+        maven: 'Maven',
+        mavenLocalRepo: '.repository') {
+            sh "mvn clean package"
+        }
+  }
+  
+  stage('Starting servers') {
+     parallel (
+         "mock-config": { 
+               withMaven(
+                  maven: 'Maven',
+                  mavenLocalRepo: '.repository') {
+                      sh "mvn com.smartbear.soapui:soapui-maven-plugin:5.2.0:mock@mock-config"
+                  }
+         },
+         "mock-sefaz": { 
+               withMaven(
+                  maven: 'Maven',
+                  mavenLocalRepo: '.repository') {
+                      sh "mvn com.smartbear.soapui:soapui-maven-plugin:5.2.0:mock@mock-sefaz"
+                  }
+          },
+          "http-server": {
+              sh " http-server /home-p 6969"
+          }
+     )
+  }
+
+}
