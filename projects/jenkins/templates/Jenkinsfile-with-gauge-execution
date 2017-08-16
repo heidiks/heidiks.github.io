@@ -1,0 +1,64 @@
+node {
+    try {
+      stage ('Checkout') {
+        checkout([
+            $class: 'GitSCM',
+            branches: [[name: "*/master"]],
+            userRemoteConfigs: [[url: 'https://REPO', credentialsId: "${env.GIT_CREDENTIAL}"]],
+            extensions: [[$class: 'LocalBranch', localBranch: "master"]]]
+        )
+      }
+    
+      stage('Compile') {
+           withMaven(
+            maven: 'Maven',
+            mavenLocalRepo: '.repository') {
+                sh "mvn clean package"
+            }
+      }
+    
+      stage ('Installing gauge') {
+        withMaven(
+            maven: 'Maven',
+            mavenLocalRepo: '.repository') {
+                sh "gauge install java"
+                sh "gauge install html-report"
+                sh "gauge update -c"
+            }
+      }
+    
+      stage ('Executing gauge') {
+         withMaven(
+            maven: 'Maven',
+            mavenLocalRepo: '.repository') {
+                sh "mvn gauge:execute -DspecsDir=specs"
+         }
+      }
+    } catch (e) {
+        currentBuild.result = 'FAILURE'
+        throw e
+    } finally {
+        notifySlack(currentBuild.result)
+    }
+  
+}
+
+def notifySlack(String buildStatus = 'STARTED') {
+    buildStatus = buildStatus ?: 'SUCCESS'
+
+    def color
+
+    if (buildStatus == 'STARTED') {
+        color = '#D4DADF'
+    } else if (buildStatus == 'SUCCESS') {
+        color = '#36a64f'
+    } else if (buildStatus == 'UNSTABLE') {
+        color = '#daa038'
+    } else {
+        color = '#d00000'
+    }
+
+    def msg = "${env.JOB_NAME} - #${env.BUILD_NUMBER} <${env.BUILD_URL}|(Open)>\n\nGauge report: `http://localhost:6969`"
+
+    slackSend(color: color, message: msg)
+}
