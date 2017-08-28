@@ -1,6 +1,6 @@
-rabbit1:
+rabbit:
   image: tutum/rabbitmq
-  hostname: rabbit1
+  hostname: rabbit
   environment:
     - RABBITMQ_PASS=PASSWORD
   ports:
@@ -16,5 +16,5 @@ portal:
     - "7070:8080"
     - "9990:9990"
   links:
-    - "rabbit1"
+    - "rabbit"
     - "mongo"
